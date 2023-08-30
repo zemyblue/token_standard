@@ -36,7 +36,7 @@ pub fn instantiate(
         name: msg.name,
         symbol: msg.symbol,
         decimals: msg.decimals,
-        total_supply: total_supply,
+        total_supply,
     };
     TOKEN_INFO.save(deps.storage, &data)?;
 
@@ -102,7 +102,7 @@ pub fn handle_transfer(
     let mut rsp = Response::new();
     TransferEvent {
         owner: info.sender.as_ref(),
-        recipient: &recipient.as_ref(),
+        recipient: recipient.as_ref(),
         amount,
     }
     .add_attribute(&mut rsp);
@@ -140,8 +140,8 @@ pub fn handle_transfer_from(
 
     let mut rsp = Response::new();
     TransferEvent {
-        owner: &owner.as_str(),
-        recipient: &recipient.as_ref(),
+        owner: owner.as_str(),
+        recipient: recipient.as_ref(),
         amount,
     }
     .add_attribute(&mut rsp);
