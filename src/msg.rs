@@ -74,6 +74,7 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     Info {},
     TotalSupply {},
+    Balance { owner: String },
     Allowance { owner: String, spender: String },
 }
 
@@ -88,6 +89,11 @@ pub struct InfoResponse {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct TotalSupplyResponse {
     pub total_supply: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+pub struct BalanceResponse {
+    pub balance: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]

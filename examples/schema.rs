@@ -3,6 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
+use cosmwasm_std::BalanceResponse;
 use token_standard::msg::{
     AllowanceResponse, ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg, TotalSupplyResponse,
 };
@@ -18,5 +19,6 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(InfoResponse), &out_dir);
     export_schema(&schema_for!(TotalSupplyResponse), &out_dir);
+    export_schema(&schema_for!(BalanceResponse), &out_dir);
     export_schema(&schema_for!(AllowanceResponse), &out_dir);
 }

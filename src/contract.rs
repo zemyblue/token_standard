@@ -9,7 +9,8 @@ use cw2::set_contract_version;
 use crate::error::ContractError;
 use crate::event::{ApprovalEvent, Event, TransferEvent};
 use crate::msg::{
-    AllowanceResponse, ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg, TotalSupplyResponse,
+    AllowanceResponse, BalanceResponse, ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg,
+    TotalSupplyResponse,
 };
 use crate::state::{TokenInfo, ALLOWANCES, ALLOWANCES_SPENDER, BALANCES, TOKEN_INFO};
 
@@ -185,13 +186,18 @@ pub fn handle_approve(
         (t.1, t.0)
     }
 
-    let old_allowance = ALLOWANCES.load(deps.storage, key)?;
+    let old_allowance = ALLOWANCES.may_load(deps.storage, key)?.unwrap_or_default();
     if current_allowance != old_allowance.allowance {
         return Err(ContractError::InvalidCurrentAllowance {});
     }
-    let new_allowance = AllowanceResponse { allowance: amount };
-    ALLOWANCES.save(deps.storage, key, &new_allowance)?;
-    ALLOWANCES_SPENDER.save(deps.storage, reverse(key), &new_allowance)?;
+    if amount == Uint128::zero() {
+        ALLOWANCES.remove(deps.storage, key);
+        ALLOWANCES_SPENDER.remove(deps.storage, reverse(key));
+    } else {
+        let new_allowance = AllowanceResponse { allowance: amount };
+        ALLOWANCES.save(deps.storage, key, &new_allowance)?;
+        ALLOWANCES_SPENDER.save(deps.storage, reverse(key), &new_allowance)?;
+    }
 
     let mut rsp = Response::new();
     ApprovalEvent {
@@ -210,6 +216,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Info {} => to_binary(&query_info(deps)?),
         QueryMsg::TotalSupply {} => to_binary(&query_info(deps)?),
+        QueryMsg::Balance { owner } => to_binary(&query_balance(deps, owner)?),
         QueryMsg::Allowance { owner, spender } => {
             to_binary(&query_allowance(deps, owner, spender)?)
         }
@@ -231,6 +238,14 @@ pub fn query_total_supply(deps: Deps) -> StdResult<TotalSupplyResponse> {
     Ok(TotalSupplyResponse {
         total_supply: info.total_supply,
     })
+}
+
+pub fn query_balance(deps: Deps, owner: String) -> StdResult<BalanceResponse> {
+    let owner_addr = deps.api.addr_validate(&owner)?;
+    let balance = BALANCES
+        .may_load(deps.storage, &owner_addr)?
+        .unwrap_or_default();
+    Ok(BalanceResponse { balance })
 }
 
 pub fn query_allowance(deps: Deps, owner: String, spender: String) -> StdResult<AllowanceResponse> {
@@ -267,11 +282,9 @@ mod tests {
     }
 
     #[test]
-    fn transfer_test() {
+    fn transfer() {
         let mut deps = mock_dependencies_with_balance(&[]);
         let creator = String::from("creator");
-        let _owner = String::from("owner");
-        let _spender = String::from("spender");
         let recipient = String::from("recipient");
 
         let init_balance = Uint128::new(1000000000);
@@ -297,5 +310,44 @@ mod tests {
         let env = mock_env();
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(res.attributes[0], attr("action", "Transfer"));
+    }
+
+    #[test]
+    fn transfer_from() {
+        let mut deps = mock_dependencies_with_balance(&[]);
+        let owner = String::from("owner");
+        let spender = String::from("spender");
+        let recipient = String::from("recipient");
+
+        let init_balance = Uint128::new(1000000000);
+        do_instantiate(deps.as_mut(), &owner, init_balance);
+
+        // approve
+        let allow1 = Uint128::new(1000000);
+        let msg = ExecuteMsg::Approve {
+            spender: spender.clone(),
+            amount: allow1,
+            current_allowance: Uint128::zero(),
+        };
+        let info = mock_info(owner.as_ref(), &[]);
+        let env = mock_env();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(res.attributes[0], attr("action", "Approval"));
+        let allowance = query_allowance(deps.as_ref(), owner.clone(), spender.clone()).unwrap();
+        assert_eq!(allow1, allowance.allowance);
+
+        // transfer_from
+        let amount = Uint128::new(500000);
+        let msg = ExecuteMsg::TransferFrom {
+            owner: owner.clone(),
+            recipient: recipient.clone(),
+            amount: amount,
+        };
+        let info = mock_info(spender.as_ref(), &[]);
+        let env = mock_env();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(res.attributes[0], attr("action", "Transfer"));
+        let res = query_balance(deps.as_ref(), owner.clone()).unwrap();
+        assert_eq!(res.balance, init_balance - amount);
     }
 }
