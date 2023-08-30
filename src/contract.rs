@@ -9,7 +9,7 @@ use cw2::set_contract_version;
 use crate::error::ContractError;
 use crate::event::{ApprovalEvent, Event, TransferEvent};
 use crate::msg::{
-    AllowanceResponse, ExecuteMsg, InfoResponse, QueryMsg, TotalSupplyResponse, InstantiateMsg,
+    AllowanceResponse, ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg, TotalSupplyResponse,
 };
 use crate::state::{TokenInfo, ALLOWANCES, ALLOWANCES_SPENDER, BALANCES, TOKEN_INFO};
 
@@ -250,14 +250,13 @@ pub fn query_allowance(deps: Deps, owner: String, spender: String) -> StdResult<
 mod tests {
     use super::*;
 
-    use cosmwasm_std::{testing::{mock_info, mock_env, mock_dependencies_with_balance}, attr};
     use crate::msg::InstantiateMsg;
+    use cosmwasm_std::{
+        attr,
+        testing::{mock_dependencies_with_balance, mock_env, mock_info},
+    };
 
-    fn do_instantiate (
-        mut deps: DepsMut,
-        creator: &str,
-        amount: Uint128
-    ) -> InfoResponse {
+    fn do_instantiate(mut deps: DepsMut, creator: &str, amount: Uint128) -> InfoResponse {
         let instantiate_msg = InstantiateMsg {
             name: "Test".to_string(),
             symbol: "TST".to_string(),
@@ -282,8 +281,11 @@ mod tests {
         let init_balance = Uint128::new(1000000000);
         do_instantiate(deps.as_mut(), &creator, init_balance);
 
-        // transfer zero 
-        let msg = ExecuteMsg::Transfer { recipient: recipient.clone(), amount: Uint128::zero() };
+        // transfer zero
+        let msg = ExecuteMsg::Transfer {
+            recipient: recipient.clone(),
+            amount: Uint128::zero(),
+        };
         let info = mock_info(creator.as_ref(), &[]);
         let env = mock_env();
         let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
@@ -291,7 +293,10 @@ mod tests {
 
         // transfer normal
         let amount = Uint128::new(1000);
-        let msg = ExecuteMsg::Transfer { recipient: recipient.clone(), amount };
+        let msg = ExecuteMsg::Transfer {
+            recipient: recipient.clone(),
+            amount,
+        };
         let info = mock_info(creator.as_ref(), &[]);
         let env = mock_env();
         let res = execute(deps.as_mut(), env, info, msg).unwrap();

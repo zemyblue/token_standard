@@ -1,4 +1,4 @@
-use cosmwasm_std::{Uint128, StdResult, StdError};
+use cosmwasm_std::{StdError, StdResult, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -23,9 +23,7 @@ impl InstantiateMsg {
             ));
         }
         if self.decimals > 18 {
-            return Err(StdError::generic_err(
-                "Decimals must not exceed 18",
-            ));
+            return Err(StdError::generic_err("Decimals must not exceed 18"));
         }
         Ok(())
     }
@@ -55,9 +53,20 @@ fn is_valid_symbol(symbol: &str) -> bool {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Transfer { recipient: String, amount: Uint128 },
-    TransferFrom { owner: String, recipient: String, amount: Uint128 },
-    Approve { spender: String, amount: Uint128, current_allowance: Uint128 },
+    Transfer {
+        recipient: String,
+        amount: Uint128,
+    },
+    TransferFrom {
+        owner: String,
+        recipient: String,
+        amount: Uint128,
+    },
+    Approve {
+        spender: String,
+        amount: Uint128,
+        current_allowance: Uint128,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -68,11 +77,10 @@ pub enum QueryMsg {
     Allowance { owner: String, spender: String },
 }
 
-
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct InfoResponse {
     pub name: String,
-    pub symbol: String, 
+    pub symbol: String,
     pub decimal: u8,
     pub total_supply: Uint128,
 }

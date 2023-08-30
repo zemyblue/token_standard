@@ -10,7 +10,7 @@ use crate::msg::AllowanceResponse;
 #[serde(rename_all = "snake_case")]
 pub struct TokenInfo {
     pub name: String,
-    pub symbol: String, 
+    pub symbol: String,
     pub decimals: u8,
     pub total_supply: Uint128,
 }
