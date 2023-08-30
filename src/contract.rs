@@ -41,10 +41,6 @@ pub fn instantiate(
     TOKEN_INFO.save(deps.storage, &data)?;
 
     Ok(Response::default())
-    // Ok(Response::new()
-    //     .add_attribute("method", "instantiate")
-    //     .add_attribute("owner", info.sender)
-    //     .add_attribute("count", msg.count.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
