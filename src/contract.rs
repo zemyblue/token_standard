@@ -99,21 +99,15 @@ pub fn handle_transfer(
         },
     )?;
 
-    let res = Response::new()
-        .add_attribute("action", "Transfer")
-        .add_attribute("owner", info.sender)
-        .add_attribute("recipient", recipient)
-        .add_attribute("amount", amount);
-    Ok(res)
-    // let mut rsp = Response::new();
-    // TransferEvent {
-    //     owner: info.sender.as_ref(),
-    //     recipient: &recipient.as_ref(),
-    //     amount,
-    // }
-    // .add_attribute(&mut rsp);
+    let mut rsp = Response::new();
+    TransferEvent {
+        owner: info.sender.as_ref(),
+        recipient: &recipient.as_ref(),
+        amount,
+    }
+    .add_attribute(&mut rsp);
 
-    // Ok(rsp)
+    Ok(rsp)
 }
 
 pub fn handle_transfer_from(
