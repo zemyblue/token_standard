@@ -9,7 +9,7 @@ use cw2::set_contract_version;
 use crate::error::ContractError;
 use crate::event::{ApprovalEvent, Event, TransferEvent};
 use crate::msg::{
-    AllowanceResponse, ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg, TotalSupplyResponse,
+    AllowanceResponse, ExecuteMsg, InfoResponse, QueryMsg, TotalSupplyResponse, InstantiateMsg,
 };
 use crate::state::{TokenInfo, ALLOWANCES, ALLOWANCES_SPENDER, BALANCES, TOKEN_INFO};
 
@@ -99,20 +99,21 @@ pub fn handle_transfer(
         },
     )?;
 
-    // let res = Response::new()
-    //     .add_attribute("action", "Transfer")
-    //     .add_attribute("owner", info.sender)
-    //     .add_attribute("recipient", recipient)
-    //     .add_attribute("amount", amount);
-    let mut rsp = Response::new();
-    TransferEvent {
-        owner: info.sender.as_ref(),
-        recipient: &recipient.as_ref(),
-        amount,
-    }
-    .add_attribute(&mut rsp);
+    let res = Response::new()
+        .add_attribute("action", "Transfer")
+        .add_attribute("owner", info.sender)
+        .add_attribute("recipient", recipient)
+        .add_attribute("amount", amount);
+    Ok(res)
+    // let mut rsp = Response::new();
+    // TransferEvent {
+    //     owner: info.sender.as_ref(),
+    //     recipient: &recipient.as_ref(),
+    //     amount,
+    // }
+    // .add_attribute(&mut rsp);
 
-    Ok(rsp)
+    // Ok(rsp)
 }
 
 pub fn handle_transfer_from(
@@ -251,73 +252,55 @@ pub fn query_allowance(deps: Deps, owner: String, spender: String) -> StdResult<
     Ok(allowance)
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
-//     use cosmwasm_std::{coins, from_binary};
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     #[test]
-//     fn proper_initialization() {
-//         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+    use cosmwasm_std::{testing::{mock_info, mock_env, mock_dependencies_with_balance}, attr};
+    use crate::msg::InstantiateMsg;
 
-//         let msg = InstantiateMsg { count: 17 };
-//         let info = mock_info("creator", &coins(1000, "earth"));
+    fn do_instantiate (
+        mut deps: DepsMut,
+        creator: &str,
+        amount: Uint128
+    ) -> InfoResponse {
+        let instantiate_msg = InstantiateMsg {
+            name: "Test".to_string(),
+            symbol: "TST".to_string(),
+            decimals: 8,
+            initial_balances: amount,
+        };
+        let info = mock_info(creator, &[]);
+        let env = mock_env();
+        let res = instantiate(deps.branch(), env, info, instantiate_msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        query_info(deps.as_ref()).unwrap()
+    }
 
-//         // we can just call .unwrap() to assert this was a success
-//         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
+    #[test]
+    fn transfer_test() {
+        let mut deps = mock_dependencies_with_balance(&[]);
+        let creator = String::from("creator");
+        let _owner = String::from("owner");
+        let _spender = String::from("spender");
+        let recipient = String::from("recipient");
 
-//         // it worked, let's query the state
-//         let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-//         let value: CountResponse = from_binary(&res).unwrap();
-//         assert_eq!(17, value.count);
-//     }
+        let init_balance = Uint128::new(1000000000);
+        do_instantiate(deps.as_mut(), &creator, init_balance);
 
-//     #[test]
-//     fn increment() {
-//         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        // transfer zero 
+        let msg = ExecuteMsg::Transfer { recipient: recipient.clone(), amount: Uint128::zero() };
+        let info = mock_info(creator.as_ref(), &[]);
+        let env = mock_env();
+        let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
+        assert_eq!(err, ContractError::InvalidZeroAmount {});
 
-//         let msg = InstantiateMsg { count: 17 };
-//         let info = mock_info("creator", &coins(2, "token"));
-//         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-//         // beneficiary can release it
-//         let info = mock_info("anyone", &coins(2, "token"));
-//         let msg = ExecuteMsg::Increment {};
-//         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-//         // should increase counter by 1
-//         let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-//         let value: CountResponse = from_binary(&res).unwrap();
-//         assert_eq!(18, value.count);
-//     }
-
-//     #[test]
-//     fn reset() {
-//         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
-
-//         let msg = InstantiateMsg { count: 17 };
-//         let info = mock_info("creator", &coins(2, "token"));
-//         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-//         // beneficiary can release it
-//         let unauth_info = mock_info("anyone", &coins(2, "token"));
-//         let msg = ExecuteMsg::Reset { count: 5 };
-//         let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
-//         match res {
-//             Err(ContractError::Unauthorized {}) => {}
-//             _ => panic!("Must return unauthorized error"),
-//         }
-
-//         // only the original creator can reset the counter
-//         let auth_info = mock_info("creator", &coins(2, "token"));
-//         let msg = ExecuteMsg::Reset { count: 5 };
-//         let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
-
-//         // should now be 5
-//         let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-//         let value: CountResponse = from_binary(&res).unwrap();
-//         assert_eq!(5, value.count);
-//     }
-// }
+        // transfer normal
+        let amount = Uint128::new(1000);
+        let msg = ExecuteMsg::Transfer { recipient: recipient.clone(), amount };
+        let info = mock_info(creator.as_ref(), &[]);
+        let env = mock_env();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(res.attributes[0], attr("action", "Transfer"));
+    }
+}
