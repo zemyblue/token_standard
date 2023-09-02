@@ -81,9 +81,9 @@ mod exec {
         if amount == Uint128::zero() {
             return Err(ContractError::InvalidZeroAmount {});
         }
-    
+
         let rcpt_addr = deps.api.addr_validate(&recipient)?;
-    
+
         BALANCES.update(
             deps.storage,
             &info.sender,
@@ -98,14 +98,14 @@ mod exec {
                 Ok(balance.unwrap_or_default().checked_add(amount)?)
             },
         )?;
-    
+
         Ok(Response::new().add_event(transfer_event(
             info.sender.as_ref(),
             recipient.as_ref(),
             amount,
         )))
     }
-    
+
     pub fn transfer_from(
         deps: DepsMut,
         _env: Env,
@@ -116,9 +116,9 @@ mod exec {
     ) -> Result<Response, ContractError> {
         let owner_addr = deps.api.addr_validate(&owner)?;
         let rcpt_addr = deps.api.addr_validate(&recipient)?;
-    
+
         _deduct_allowance(deps.storage, &owner_addr, &info.sender, amount)?;
-    
+
         BALANCES.update(
             deps.storage,
             &owner_addr,
@@ -133,7 +133,7 @@ mod exec {
                 Ok(balance.unwrap_or_default().checked_add(amount)?)
             },
         )?;
-    
+
         Ok(Response::new().add_event(transfer_event(owner.as_ref(), recipient.as_ref(), amount)))
     }
 
@@ -171,12 +171,12 @@ mod exec {
         if spender_addr == info.sender {
             return Err(ContractError::CannotSetOwnAccount {});
         }
-    
+
         let key = (&info.sender, &spender_addr);
         fn reverse<'a>(t: (&'a Addr, &'a Addr)) -> (&'a Addr, &'a Addr) {
             (t.1, t.0)
         }
-    
+
         let old_allowance = ALLOWANCES.may_load(deps.storage, key)?.unwrap_or_default();
         if current_allowance != old_allowance.allowance {
             return Err(ContractError::InvalidCurrentAllowance {});
@@ -189,7 +189,7 @@ mod exec {
             ALLOWANCES.save(deps.storage, key, &new_allowance)?;
             ALLOWANCES_SPENDER.save(deps.storage, reverse(key), &new_allowance)?;
         }
-    
+
         Ok(Response::new().add_event(approval_event(
             info.sender.as_ref(),
             spender.as_ref(),
