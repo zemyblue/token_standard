@@ -1,8 +1,9 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{StdError, StdResult, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub name: String,
     pub symbol: String,
@@ -50,8 +51,7 @@ fn is_valid_symbol(symbol: &str) -> bool {
     true
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     Transfer {
         recipient: String,
@@ -69,12 +69,16 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(InfoResponse)]
     Info {},
+    #[returns(TotalSupplyResponse)]
     TotalSupply {},
+    #[returns(BalanceResponse)]
     Balance { owner: String },
+    #[returns(AllowanceResponse)]
     Allowance { owner: String, spender: String },
 }
 

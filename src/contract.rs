@@ -53,146 +53,150 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Transfer { recipient, amount } => {
-            handle_transfer(deps, env, info, recipient, amount)
+            exec::transfer(deps, env, info, recipient, amount)
         }
         ExecuteMsg::TransferFrom {
             owner,
             recipient,
             amount,
-        } => handle_transfer_from(deps, env, info, owner, recipient, amount),
+        } => exec::transfer_from(deps, env, info, owner, recipient, amount),
         ExecuteMsg::Approve {
             spender,
             amount,
             current_allowance,
-        } => handle_approve(deps, env, info, spender, amount, current_allowance),
+        } => exec::approve(deps, env, info, spender, amount, current_allowance),
     }
 }
 
-pub fn handle_transfer(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    recipient: String,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    if amount == Uint128::zero() {
-        return Err(ContractError::InvalidZeroAmount {});
-    }
+mod exec {
+    use super::*;
 
-    let rcpt_addr = deps.api.addr_validate(&recipient)?;
-
-    BALANCES.update(
-        deps.storage,
-        &info.sender,
-        |balance: Option<Uint128>| -> StdResult<_> {
-            Ok(balance.unwrap_or_default().checked_sub(amount)?)
-        },
-    )?;
-    BALANCES.update(
-        deps.storage,
-        &rcpt_addr,
-        |balance: Option<Uint128>| -> StdResult<_> {
-            Ok(balance.unwrap_or_default().checked_add(amount)?)
-        },
-    )?;
-
-    Ok(Response::new().add_event(transfer_event(
-        info.sender.as_ref(),
-        recipient.as_ref(),
-        amount,
-    )))
-}
-
-pub fn handle_transfer_from(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    owner: String,
-    recipient: String,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    let owner_addr = deps.api.addr_validate(&owner)?;
-    let rcpt_addr = deps.api.addr_validate(&recipient)?;
-
-    deduct_allowance(deps.storage, &owner_addr, &info.sender, amount)?;
-
-    BALANCES.update(
-        deps.storage,
-        &owner_addr,
-        |balance: Option<Uint128>| -> StdResult<_> {
-            Ok(balance.unwrap_or_default().checked_sub(amount)?)
-        },
-    )?;
-    BALANCES.update(
-        deps.storage,
-        &rcpt_addr,
-        |balance: Option<Uint128>| -> StdResult<_> {
-            Ok(balance.unwrap_or_default().checked_add(amount)?)
-        },
-    )?;
-
-    Ok(Response::new().add_event(transfer_event(owner.as_ref(), recipient.as_ref(), amount)))
-}
-
-pub fn deduct_allowance(
-    storage: &mut dyn Storage,
-    owner: &Addr,
-    spender: &Addr,
-    amount: Uint128,
-) -> Result<AllowanceResponse, ContractError> {
-    let update_fn = |current: Option<AllowanceResponse>| -> _ {
-        match current {
-            Some(mut a) => {
-                a.allowance = a
-                    .allowance
-                    .checked_sub(amount)
-                    .map_err(StdError::overflow)?;
-                Ok(a)
-            }
-            None => Err(ContractError::NoAllowance {}),
+    pub fn transfer(
+        deps: DepsMut,
+        _env: Env,
+        info: MessageInfo,
+        recipient: String,
+        amount: Uint128,
+    ) -> Result<Response, ContractError> {
+        if amount == Uint128::zero() {
+            return Err(ContractError::InvalidZeroAmount {});
         }
-    };
-    ALLOWANCES.update(storage, (owner, spender), update_fn)?;
-    ALLOWANCES_SPENDER.update(storage, (spender, owner), update_fn)
-}
-
-pub fn handle_approve(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    spender: String,
-    amount: Uint128,
-    current_allowance: Uint128,
-) -> Result<Response, ContractError> {
-    let spender_addr = deps.api.addr_validate(&spender)?;
-    if spender_addr == info.sender {
-        return Err(ContractError::CannotSetOwnAccount {});
+    
+        let rcpt_addr = deps.api.addr_validate(&recipient)?;
+    
+        BALANCES.update(
+            deps.storage,
+            &info.sender,
+            |balance: Option<Uint128>| -> StdResult<_> {
+                Ok(balance.unwrap_or_default().checked_sub(amount)?)
+            },
+        )?;
+        BALANCES.update(
+            deps.storage,
+            &rcpt_addr,
+            |balance: Option<Uint128>| -> StdResult<_> {
+                Ok(balance.unwrap_or_default().checked_add(amount)?)
+            },
+        )?;
+    
+        Ok(Response::new().add_event(transfer_event(
+            info.sender.as_ref(),
+            recipient.as_ref(),
+            amount,
+        )))
+    }
+    
+    pub fn transfer_from(
+        deps: DepsMut,
+        _env: Env,
+        info: MessageInfo,
+        owner: String,
+        recipient: String,
+        amount: Uint128,
+    ) -> Result<Response, ContractError> {
+        let owner_addr = deps.api.addr_validate(&owner)?;
+        let rcpt_addr = deps.api.addr_validate(&recipient)?;
+    
+        _deduct_allowance(deps.storage, &owner_addr, &info.sender, amount)?;
+    
+        BALANCES.update(
+            deps.storage,
+            &owner_addr,
+            |balance: Option<Uint128>| -> StdResult<_> {
+                Ok(balance.unwrap_or_default().checked_sub(amount)?)
+            },
+        )?;
+        BALANCES.update(
+            deps.storage,
+            &rcpt_addr,
+            |balance: Option<Uint128>| -> StdResult<_> {
+                Ok(balance.unwrap_or_default().checked_add(amount)?)
+            },
+        )?;
+    
+        Ok(Response::new().add_event(transfer_event(owner.as_ref(), recipient.as_ref(), amount)))
     }
 
-    let key = (&info.sender, &spender_addr);
-    fn reverse<'a>(t: (&'a Addr, &'a Addr)) -> (&'a Addr, &'a Addr) {
-        (t.1, t.0)
+    pub fn _deduct_allowance(
+        storage: &mut dyn Storage,
+        owner: &Addr,
+        spender: &Addr,
+        amount: Uint128,
+    ) -> Result<AllowanceResponse, ContractError> {
+        let update_fn = |current: Option<AllowanceResponse>| -> _ {
+            match current {
+                Some(mut a) => {
+                    a.allowance = a
+                        .allowance
+                        .checked_sub(amount)
+                        .map_err(StdError::overflow)?;
+                    Ok(a)
+                }
+                None => Err(ContractError::NoAllowance {}),
+            }
+        };
+        ALLOWANCES.update(storage, (owner, spender), update_fn)?;
+        ALLOWANCES_SPENDER.update(storage, (spender, owner), update_fn)
     }
 
-    let old_allowance = ALLOWANCES.may_load(deps.storage, key)?.unwrap_or_default();
-    if current_allowance != old_allowance.allowance {
-        return Err(ContractError::InvalidCurrentAllowance {});
+    pub fn approve(
+        deps: DepsMut,
+        _env: Env,
+        info: MessageInfo,
+        spender: String,
+        amount: Uint128,
+        current_allowance: Uint128,
+    ) -> Result<Response, ContractError> {
+        let spender_addr = deps.api.addr_validate(&spender)?;
+        if spender_addr == info.sender {
+            return Err(ContractError::CannotSetOwnAccount {});
+        }
+    
+        let key = (&info.sender, &spender_addr);
+        fn reverse<'a>(t: (&'a Addr, &'a Addr)) -> (&'a Addr, &'a Addr) {
+            (t.1, t.0)
+        }
+    
+        let old_allowance = ALLOWANCES.may_load(deps.storage, key)?.unwrap_or_default();
+        if current_allowance != old_allowance.allowance {
+            return Err(ContractError::InvalidCurrentAllowance {});
+        }
+        if amount == Uint128::zero() {
+            ALLOWANCES.remove(deps.storage, key);
+            ALLOWANCES_SPENDER.remove(deps.storage, reverse(key));
+        } else {
+            let new_allowance = AllowanceResponse { allowance: amount };
+            ALLOWANCES.save(deps.storage, key, &new_allowance)?;
+            ALLOWANCES_SPENDER.save(deps.storage, reverse(key), &new_allowance)?;
+        }
+    
+        Ok(Response::new().add_event(approval_event(
+            info.sender.as_ref(),
+            spender.as_ref(),
+            old_allowance.allowance,
+            amount,
+        )))
     }
-    if amount == Uint128::zero() {
-        ALLOWANCES.remove(deps.storage, key);
-        ALLOWANCES_SPENDER.remove(deps.storage, reverse(key));
-    } else {
-        let new_allowance = AllowanceResponse { allowance: amount };
-        ALLOWANCES.save(deps.storage, key, &new_allowance)?;
-        ALLOWANCES_SPENDER.save(deps.storage, reverse(key), &new_allowance)?;
-    }
-
-    Ok(Response::new().add_event(approval_event(
-        info.sender.as_ref(),
-        spender.as_ref(),
-        old_allowance.allowance,
-        amount,
-    )))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
