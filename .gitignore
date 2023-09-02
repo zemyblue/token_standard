@@ -14,3 +14,7 @@
 # IDEs
 *.iml
 .idea
+
+# scripts
+scripts/yarn-error.log
+scripts/node_modules
