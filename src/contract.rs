@@ -7,7 +7,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::event::{ApprovalEvent, Event, TransferEvent};
+use crate::event::{approval_event, transfer_event};
 use crate::msg::{
     AllowanceResponse, BalanceResponse, ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg,
     TotalSupplyResponse,
@@ -96,15 +96,11 @@ pub fn handle_transfer(
         },
     )?;
 
-    let mut rsp = Response::new();
-    TransferEvent {
-        owner: info.sender.as_ref(),
-        recipient: recipient.as_ref(),
+    Ok(Response::new().add_event(transfer_event(
+        info.sender.as_ref(),
+        recipient.as_ref(),
         amount,
-    }
-    .add_attribute(&mut rsp);
-
-    Ok(rsp)
+    )))
 }
 
 pub fn handle_transfer_from(
@@ -135,15 +131,7 @@ pub fn handle_transfer_from(
         },
     )?;
 
-    let mut rsp = Response::new();
-    TransferEvent {
-        owner: owner.as_str(),
-        recipient: recipient.as_ref(),
-        amount,
-    }
-    .add_attribute(&mut rsp);
-
-    Ok(rsp)
+    Ok(Response::new().add_event(transfer_event(owner.as_ref(), recipient.as_ref(), amount)))
 }
 
 pub fn deduct_allowance(
@@ -199,16 +187,12 @@ pub fn handle_approve(
         ALLOWANCES_SPENDER.save(deps.storage, reverse(key), &new_allowance)?;
     }
 
-    let mut rsp = Response::new();
-    ApprovalEvent {
-        owner: info.sender.as_ref(),
-        spender: spender.as_ref(),
-        old_amount: old_allowance.allowance,
-        new_amount: amount,
-    }
-    .add_attribute(&mut rsp);
-
-    Ok(rsp)
+    Ok(Response::new().add_event(approval_event(
+        info.sender.as_ref(),
+        spender.as_ref(),
+        old_allowance.allowance,
+        amount,
+    )))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -262,10 +246,7 @@ mod tests {
     use super::*;
 
     use crate::msg::InstantiateMsg;
-    use cosmwasm_std::{
-        attr,
-        testing::{mock_dependencies_with_balance, mock_env, mock_info},
-    };
+    use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
 
     fn do_instantiate(mut deps: DepsMut, creator: &str, amount: Uint128) -> InfoResponse {
         let instantiate_msg = InstantiateMsg {
@@ -309,7 +290,7 @@ mod tests {
         let info = mock_info(creator.as_ref(), &[]);
         let env = mock_env();
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
-        assert_eq!(res.attributes[0], attr("action", "Transfer"));
+        assert_eq!(res.events[0].ty, "Transfer");
     }
 
     #[test]
@@ -332,7 +313,7 @@ mod tests {
         let info = mock_info(owner.as_ref(), &[]);
         let env = mock_env();
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
-        assert_eq!(res.attributes[0], attr("action", "Approval"));
+        assert_eq!(res.events[0].ty, "Approval");
         let allowance = query_allowance(deps.as_ref(), owner.clone(), spender.clone()).unwrap();
         assert_eq!(allow1, allowance.allowance);
 
@@ -346,7 +327,7 @@ mod tests {
         let info = mock_info(spender.as_ref(), &[]);
         let env = mock_env();
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
-        assert_eq!(res.attributes[0], attr("action", "Transfer"));
+        assert_eq!(res.events[0].ty, "Transfer");
         let res = query_balance(deps.as_ref(), owner.clone()).unwrap();
         assert_eq!(res.balance, init_balance - amount);
     }
