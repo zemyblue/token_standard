@@ -1,5 +1,4 @@
 use cosmwasm_schema::write_api;
-
 use token_standard::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
