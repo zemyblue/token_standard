@@ -69,16 +69,24 @@ jobs:
           args: -- -D warnings
 
       - name: Generate Schema(token-standard)
-        uses: actions-rs/cargo@v1
-        with:
-          command: schema
-          args: --locked --manifest-path ./contracts/token-standard
+        working-directory: ./contracts/token-standard
+        run: cargo schema --locked
 
       - name: Generate Schema(token-caller)
-        uses: actions-rs/cargo@v1
-        with:
-          command: schema
-          args: --locked --manifest-path ./contracts/token-caller
+        working-directory: ./contracts/token-caller
+        run: cargo schema --locked
+
+      # - name: Generate Schema(token-standard)
+      #   uses: actions-rs/cargo@v1
+      #   with:
+      #     command: schema
+      #     args: --locked
+
+      # - name: Generate Schema(token-caller)
+      #   uses: actions-rs/cargo@v1
+      #   with:
+      #     command: schema
+      #     args: --locked
 
       - name: Schema Changes
         # fails if any changes not committed
