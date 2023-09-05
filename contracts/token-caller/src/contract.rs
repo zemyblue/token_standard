@@ -60,7 +60,7 @@ pub fn execute(
 }
 
 mod exec {
-    use cosmwasm_std::{to_binary, Uint128, WasmMsg};
+    use cosmwasm_std::{to_binary, SubMsg, Uint128, WasmMsg};
 
     use super::*;
 
@@ -76,14 +76,13 @@ mod exec {
             return Err(ContractError::InvalidZeroAmount {});
         }
 
-        let sub_transfer_msg = TokenExecuteMsg::Transfer { recipient, amount: amount.into() };
         let sub_msg = WasmMsg::Execute {
             contract_addr: contract,
-            msg: to_binary(&sub_transfer_msg)?,
+            msg: to_binary(&TokenExecuteMsg::Transfer { recipient, amount: amount.into() })?,
             funds: vec![],
         };
 
-        let rsp = Response::new().add_message(sub_msg);
+        let rsp = Response::new().add_submessage(SubMsg::new(sub_msg));
         Ok(rsp)
     }
 
@@ -119,7 +118,10 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::{mock_info, mock_env, mock_dependencies_with_balance};
+    use cosmwasm_std::{
+        testing::{mock_dependencies_with_balance, mock_env, mock_info},
+        to_binary, CosmosMsg, SubMsg, Uint128, WasmMsg,
+    };
 
     use super::*;
 
@@ -135,11 +137,33 @@ mod tests {
     fn transfer() {
         let mut deps = mock_dependencies_with_balance(&[]);
         let creator = String::from("creator");
-        let _recipient = String::from("recipient");
+        let recipient = String::from("recipient");
+        let other_contract = String::from("contract");
 
-        do_instantiate(deps.as_mut(), &creator)
+        do_instantiate(deps.as_mut(), &creator);
 
         // transfer zero
-
+        let transfer_amount = Uint128::new(10000);
+        let msg = ExecuteMsg::Transfer {
+            contract: other_contract.clone(),
+            recipient: recipient.clone(),
+            amount: transfer_amount,
+        };
+        let info = mock_info(creator.as_ref(), &[]);
+        let env = mock_env();
+        let res = execute(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(1, res.messages.len());
+        let expected = TokenExecuteMsg::Transfer {
+            recipient,
+            amount: transfer_amount,
+        };
+        assert_eq!(
+            &res.messages[0],
+            &SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: other_contract,
+                msg: to_binary(&expected).unwrap(),
+                funds: vec![]
+            }))
+        )
     }
 }
