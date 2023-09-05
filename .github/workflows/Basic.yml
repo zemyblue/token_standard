@@ -1,6 +1,10 @@
 # Based on https://github.com/actions-rs/example/blob/master/.github/workflows/quickstart.yml
 
-on: [push, pull_request]
+on: 
+  pull_request:
+  push:
+    branches:
+      - main
 
 name: Basic
 
@@ -64,11 +68,17 @@ jobs:
           command: clippy
           args: -- -D warnings
 
-      - name: Generate Schema
+      - name: Generate Schema(token-standard)
         uses: actions-rs/cargo@v1
         with:
           command: schema
-          args: --locked
+          args: --locked --manifest-path ./contracts/token-standard
+
+      - name: Generate Schema(token-caller)
+        uses: actions-rs/cargo@v1
+        with:
+          command: schema
+          args: --locked --manifest-path ./contracts/token-caller
 
       - name: Schema Changes
         # fails if any changes not committed
