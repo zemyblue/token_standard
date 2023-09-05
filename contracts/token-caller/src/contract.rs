@@ -78,10 +78,7 @@ mod exec {
 
         let sub_msg = WasmMsg::Execute {
             contract_addr: contract,
-            msg: to_binary(&TokenExecuteMsg::Transfer {
-                recipient,
-                amount,
-            })?,
+            msg: to_binary(&TokenExecuteMsg::Transfer { recipient, amount })?,
             funds: vec![],
         };
 
