@@ -2,25 +2,24 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 
 #[cw_serde]
-pub struct InstantiateMsg {
-}
+pub struct InstantiateMsg {}
 
 #[cw_serde]
 pub enum ExecuteMsg {
     Transfer {
-        contract: String, 
+        contract: String,
         recipient: String,
         amount: Uint128,
     },
     TransferFrom {
-        contract: String, 
-        owner: String, 
+        contract: String,
+        owner: String,
         recipient: String,
         amount: Uint128,
     },
     Approve {
-        contract: String, 
-        spender: String, 
+        contract: String,
+        spender: String,
         amount: Uint128,
         current_allowance: Uint128,
     },
@@ -28,5 +27,4 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {
-}
+pub enum QueryMsg {}
