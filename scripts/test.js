@@ -48,7 +48,7 @@ class TokenClient {
     }
 
     async instantiateContract(sender, initData) {
-        const instantiateFee = calculateFee(500_000, gasPrice);
+        const instantiateFee = calculateFee(500_000, this.gasPrice);
         const instRes = await this.client.instantiate(
             sender, 
             this.codeId, 
@@ -66,7 +66,7 @@ class TokenClient {
     }
 
     async transfer(contractAddress, sender, recipient, amount) {
-        const transferFee = calculateFee(150_000, gasPrice);
+        const transferFee = calculateFee(150_000, this.gasPrice);
         const transferMsg = {
             transfer: {
                 recipient: recipient,
@@ -80,7 +80,7 @@ class TokenClient {
     }
 
     async approve(contractAddress, sender, spender, amount, current_allowance) {
-        const approveFee = calculateFee(150_000, gasPrice);
+        const approveFee = calculateFee(150_000, this.gasPrice);
         const approveMsg = {
             approve: {
                 spender: spender,
@@ -95,7 +95,7 @@ class TokenClient {
     }
 
     async transferFrom(contractAddress, sender, owner, recipient, amount) {
-        const transferFromFee = calculateFee(150_000, gasPrice);
+        const transferFromFee = calculateFee(150_000, this.gasPrice);
         const transferFromMsg = {
             transfer_from: {
                 owner: owner,
@@ -110,24 +110,87 @@ class TokenClient {
     }
 }
 
-const gasPrice = GasPrice.fromString("0.025cony");
 
-async function instantiateContract(client, codeId, sender, initData) {
-    const instantiateFee = calculateFee(500_000, gasPrice);
-    const instRes = await client.instantiate(
-        sender, 
-        codeId, 
-        initData.msg, 
-        initData.label, 
-        instantiateFee,
-         {
-            memo: "Create a Test Token",
-            admin: initData.admin,
+class CallerClient {
+    constructor(client, codeId) {
+        this.client = client;
+        this.codeId = codeId;
+        this.gasPrice = GasPrice.fromString("0.025cony");
+    }
+
+    async instantiateContract(sender) {
+        const instantiateFee = calculateFee(500_000, this.gasPrice);
+        const instRes = await this.client.instantiate(
+            sender, 
+            this.codeId, 
+            {}, 
+            "caller instantiate", 
+            instantiateFee,
+             {
+                memo: "Create a Test Token",
+                admin: sender,
+            }
+        );
+        console.info(`Contract instantiated at ${instRes.contractAddress} in ${instRes.transactionHash}`);
+    
+        return instRes.contractAddress;
+    }
+
+    async transfer(contractAddress, sender, contract, recipient, amount) {
+        const fee = calculateFee(200_000, this.gasPrice);
+        const msg = {
+            transfer: {
+                contract: contract,
+                recipient: recipient,
+                amount: amount,
+            },
         }
-    );
-    console.info(`Contract instantiated at ${instRes.contractAddress} in ${instRes.transactionHash}`);
+        const res = await this.client.execute(sender, contractAddress, msg, fee);
+        console.info(`Transfer(caller) txHash: ${res.transactionHash}, events: ${JSON.stringify(res.events)}`);
 
-    return instRes.contractAddress;
+        return res.transactionHash;
+    }
+
+    async transferFrom(contractAddress, sender, contract, owner, recipient, amount) {
+        const fee = calculateFee(200_000, this.gasPrice);
+        const msg = {
+            transfer_from: {
+                contract: contract,
+                owner: owner,
+                recipient: recipient,
+                amount: amount,
+            },
+        };
+        const res = await this.client.execute(sender, contractAddress, msg, fee);
+        console.info(`TransferFrom(caller) txHash: ${res.transactionHash}, events: ${JSON.stringify(res.events)}`);
+
+        return res.transactionHash;
+    }
+
+    async approve(contractAddress, sender, contract, spender, amount, current_allowance) {
+        const approveFee = calculateFee(200_000, this.gasPrice);
+        const approveMsg = {
+            approve: {
+                contract: contract,
+                spender: spender,
+                amount: amount,
+                current_allowance: current_allowance,
+            },
+        };
+        const res = await this.client.execute(sender, contractAddress, approveMsg, approveFee);
+        console.info(`Approve(caller) txHash: ${res.transactionHash}, events:${JSON.stringify(res.events)}`);
+
+        return res.transactionHash;
+    }
+}
+
+async function deployContract(client, sender, wasmData) {
+    const gasPrice = GasPrice.fromString("0.025cony");
+    const uploadFee = calculateFee(1_500_000, gasPrice);
+    const uploadReceipt = await client.upload(sender, wasmData, uploadFee, "Upload standard contract");
+    console.info(`Upload succeeded. Receipt: ${JSON.stringify(uploadReceipt)}`);
+
+    return uploadReceipt.codeId;
 }
 
 
@@ -139,14 +202,11 @@ async function main() {
     });
     const client = await SigningFinschiaClient.connectWithSigner(endpoint, wallet);
 
-    const wasm = fs.readFileSync(__dirname + "/../artifacts/token_standard.wasm");
-
     // deploy
-    const uploadFee = calculateFee(1_500_000, gasPrice);
-    const uploadReceipt = await client.upload(alice.address0, wasm, uploadFee, "Upload standard contract");
-    console.info(`Upload succeeded. Receipt: ${JSON.stringify(uploadReceipt)}`);
+    const wasm = fs.readFileSync(__dirname + "/../artifacts/token_standard.wasm");
+    const tokenCodeId = await deployContract(client, alice.address0, wasm);
     
-    const tokenClient = new TokenClient(client, uploadReceipt.codeId);
+    const tokenClient = new TokenClient(client, tokenCodeId);
 
     // instantiate 1
     const contractAddress1 = await tokenClient.instantiateContract(alice.address0, inits[0]);
@@ -172,6 +232,31 @@ async function main() {
     const foundationAddress = "link190vt0vxc8c8vj24a7mm3fjsenfu8f5yxxj76cp";
     await tokenClient.transfer(contractAddress1, alice.address0, foundationAddress, "10000");
 
+    /////////////////////////////////////////
+    // deploy caller contract
+    const callerWasm = fs.readFileSync(__dirname + "/../artifacts/token_caller.wasm");
+    const callerCodeId = await deployContract(client, alice.address1, callerWasm);
+
+    const callerClient = new CallerClient(client, callerCodeId);
+
+    // instantiate
+    const callerContractAddr = await callerClient.instantiateContract(alice.address1);
+
+    // trasnfer token to caller contract
+    console.info("[Transfer token to callerContract]");
+    await tokenClient.transfer(contractAddress1, alice.address0, callerContractAddr, "10000");
+
+    // transfer by caller contract
+    console.info("[Transfer token from callerContract to alice address2]");
+    await callerClient.transfer(callerContractAddr, alice.address1, contractAddress1, alice.address2, "5000");
+
+    // approve by caller contract
+    const callerContractAddr2 = await callerClient.instantiateContract(alice.address2);
+    console.info("[Approve token of caller]");
+    await callerClient.approve(callerContractAddr, alice.address1, contractAddress1, callerContractAddr2, "5000", "0");
+
+    console.info("[TransferFrom by caller]");
+    await callerClient.transferFrom(callerContractAddr2, alice.address2, contractAddress1, callerContractAddr, alice.address3, "2000");
 }
 
 
