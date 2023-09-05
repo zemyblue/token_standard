@@ -78,7 +78,10 @@ mod exec {
 
         let sub_msg = WasmMsg::Execute {
             contract_addr: contract,
-            msg: to_binary(&TokenExecuteMsg::Transfer { recipient, amount: amount.into() })?,
+            msg: to_binary(&TokenExecuteMsg::Transfer {
+                recipient,
+                amount: amount.into(),
+            })?,
             funds: vec![],
         };
 
@@ -90,24 +93,52 @@ mod exec {
         _deps: DepsMut,
         _env: Env,
         _info: MessageInfo,
-        _contract: String,
-        _owner: String,
-        _recipient: String,
-        _amount: Uint128,
+        contract: String,
+        owner: String,
+        recipient: String,
+        amount: Uint128,
     ) -> Result<Response, ContractError> {
-        Ok(Response::default())
+        if amount == Uint128::zero() {
+            return Err(ContractError::InvalidZeroAmount {});
+        }
+
+        let sub_msg = WasmMsg::Execute {
+            contract_addr: contract,
+            msg: to_binary(&TokenExecuteMsg::TransferFrom {
+                owner,
+                recipient,
+                amount,
+            })?,
+            funds: vec![],
+        };
+
+        Ok(Response::new().add_submessage(SubMsg::new(sub_msg)))
     }
 
     pub fn approve(
         _deps: DepsMut,
         _env: Env,
         _info: MessageInfo,
-        _contract: String,
-        _spender: String,
-        _amount: Uint128,
-        _current_allowance: Uint128,
+        contract: String,
+        spender: String,
+        amount: Uint128,
+        current_allowance: Uint128,
     ) -> Result<Response, ContractError> {
-        Ok(Response::default())
+        if amount == Uint128::zero() {
+            return Err(ContractError::InvalidZeroAmount {});
+        }
+
+        let sub_msg = WasmMsg::Execute {
+            contract_addr: contract,
+            msg: to_binary(&TokenExecuteMsg::Approve {
+                spender,
+                amount,
+                current_allowance,
+            })?,
+            funds: vec![],
+        };
+
+        Ok(Response::new().add_submessage(SubMsg::new(sub_msg)))
     }
 }
 
@@ -120,7 +151,7 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 mod tests {
     use cosmwasm_std::{
         testing::{mock_dependencies_with_balance, mock_env, mock_info},
-        to_binary, CosmosMsg, SubMsg, Uint128, WasmMsg,
+        to_binary, SubMsg, Uint128, WasmMsg,
     };
 
     use super::*;
@@ -159,11 +190,11 @@ mod tests {
         };
         assert_eq!(
             &res.messages[0],
-            &SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            &SubMsg::new(WasmMsg::Execute {
                 contract_addr: other_contract,
                 msg: to_binary(&expected).unwrap(),
                 funds: vec![]
-            }))
+            })
         )
     }
 }

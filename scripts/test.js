@@ -137,16 +137,48 @@ class CallerClient {
     }
 
     async transfer(contractAddress, sender, contract, recipient, amount) {
-        const transferFee = calculateFee(150_000, this.gasPrice);
-        const transferMsg = {
+        const fee = calculateFee(200_000, this.gasPrice);
+        const msg = {
             transfer: {
                 contract: contract,
                 recipient: recipient,
                 amount: amount,
             },
         }
-        const res = await this.client.execute(sender, contractAddress, transferFee, transferFee);
+        const res = await this.client.execute(sender, contractAddress, msg, fee);
         console.info(`Transfer(caller) txHash: ${res.transactionHash}, events: ${JSON.stringify(res.events)}`);
+
+        return res.transactionHash;
+    }
+
+    async transferFrom(contractAddress, sender, contract, owner, recipient, amount) {
+        const fee = calculateFee(200_000, this.gasPrice);
+        const msg = {
+            transfer_from: {
+                contract: contract,
+                owner: owner,
+                recipient: recipient,
+                amount: amount,
+            },
+        };
+        const res = await this.client.execute(sender, contractAddress, msg, fee);
+        console.info(`TransferFrom(caller) txHash: ${res.transactionHash}, events: ${JSON.stringify(res.events)}`);
+
+        return res.transactionHash;
+    }
+
+    async approve(contractAddress, sender, contract, spender, amount, current_allowance) {
+        const approveFee = calculateFee(200_000, this.gasPrice);
+        const approveMsg = {
+            approve: {
+                contract: contract,
+                spender: spender,
+                amount: amount,
+                current_allowance: current_allowance,
+            },
+        };
+        const res = await this.client.execute(sender, contractAddress, approveMsg, approveFee);
+        console.info(`Approve(caller) txHash: ${res.transactionHash}, events:${JSON.stringify(res.events)}`);
 
         return res.transactionHash;
     }
@@ -180,25 +212,25 @@ async function main() {
     const contractAddress1 = await tokenClient.instantiateContract(alice.address0, inits[0]);
 
     // transfer
-    // await tokenClient.transfer(contractAddress1, alice.address0, alice.address1, "1000");
+    await tokenClient.transfer(contractAddress1, alice.address0, alice.address1, "1000");
 
-    // // approve
-    // await tokenClient.approve(contractAddress1, alice.address0, alice.address2, "1000000", "0");
+    // approve
+    await tokenClient.approve(contractAddress1, alice.address0, alice.address2, "1000000", "0");
 
-    // // transferFrom
-    // await tokenClient.transferFrom(contractAddress1, alice.address2, alice.address0, alice.address3, "100000");
+    // transferFrom
+    await tokenClient.transferFrom(contractAddress1, alice.address2, alice.address0, alice.address3, "100000");
 
-    // // instantiate 2
-    // const contractAddress2 = await tokenClient.instantiateContract(alice.address1, inits[1]);
+    // instantiate 2
+    const contractAddress2 = await tokenClient.instantiateContract(alice.address1, inits[1]);
 
-    // // transfer to contractAddress2
-    // await tokenClient.transfer(contractAddress1, alice.address0, contractAddress2, "1000");
+    // transfer to contractAddress2
+    await tokenClient.transfer(contractAddress1, alice.address0, contractAddress2, "1000");
 
-    // // transfer to native module (x/foundation)
-    // // grpcurl -plaintext -d '{"name":"foundation"}' 127.0.0.1:9090 cosmos.auth.v1beta1.Query/ModuleAccountByName
-    // // address: link190vt0vxc8c8vj24a7mm3fjsenfu8f5yxxj76cp
-    // const foundationAddress = "link190vt0vxc8c8vj24a7mm3fjsenfu8f5yxxj76cp";
-    // await tokenClient.transfer(contractAddress1, alice.address0, foundationAddress, "10000");
+    // transfer to native module (x/foundation)
+    // grpcurl -plaintext -d '{"name":"foundation"}' 127.0.0.1:9090 cosmos.auth.v1beta1.Query/ModuleAccountByName
+    // address: link190vt0vxc8c8vj24a7mm3fjsenfu8f5yxxj76cp
+    const foundationAddress = "link190vt0vxc8c8vj24a7mm3fjsenfu8f5yxxj76cp";
+    await tokenClient.transfer(contractAddress1, alice.address0, foundationAddress, "10000");
 
     /////////////////////////////////////////
     // deploy caller contract
@@ -214,9 +246,17 @@ async function main() {
     console.info("[Transfer token to callerContract]");
     await tokenClient.transfer(contractAddress1, alice.address0, callerContractAddr, "10000");
 
-    // transfer
+    // transfer by caller contract
     console.info("[Transfer token from callerContract to alice address2]");
     await callerClient.transfer(callerContractAddr, alice.address1, contractAddress1, alice.address2, "5000");
+
+    // approve by caller contract
+    const callerContractAddr2 = await callerClient.instantiateContract(alice.address2);
+    console.info("[Approve token of caller]");
+    await callerClient.approve(callerContractAddr, alice.address1, contractAddress1, callerContractAddr2, "5000", "0");
+
+    console.info("[TransferFrom by caller]");
+    await callerClient.transferFrom(callerContractAddr2, alice.address2, contractAddress1, callerContractAddr, alice.address3, "2000");
 }
 
 
