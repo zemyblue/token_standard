@@ -80,7 +80,7 @@ mod exec {
             contract_addr: contract,
             msg: to_binary(&TokenExecuteMsg::Transfer {
                 recipient,
-                amount: amount.into(),
+                amount,
             })?,
             funds: vec![],
         };
