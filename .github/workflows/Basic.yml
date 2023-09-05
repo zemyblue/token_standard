@@ -76,18 +76,6 @@ jobs:
         working-directory: ./contracts/token-caller
         run: cargo schema --locked
 
-      # - name: Generate Schema(token-standard)
-      #   uses: actions-rs/cargo@v1
-      #   with:
-      #     command: schema
-      #     args: --locked
-
-      # - name: Generate Schema(token-caller)
-      #   uses: actions-rs/cargo@v1
-      #   with:
-      #     command: schema
-      #     args: --locked
-
       - name: Schema Changes
         # fails if any changes not committed
         run: git diff --exit-code **/schema
