@@ -67,6 +67,10 @@ pub enum ExecuteMsg {
         amount: Uint128,
         current_allowance: Uint128,
     },
+    Receive {
+        sender: String, 
+        amount: Uint128,
+    },
 }
 
 #[cw_serde]
@@ -90,12 +94,14 @@ pub struct InfoResponse {
     pub total_supply: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+// #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+#[cw_serde]
 pub struct TotalSupplyResponse {
     pub total_supply: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+// #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
+#[cw_serde]
 pub struct BalanceResponse {
     pub balance: Uint128,
 }

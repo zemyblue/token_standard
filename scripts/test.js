@@ -65,8 +65,8 @@ class TokenClient {
         return instRes.contractAddress;
     }
 
-    async transfer(contractAddress, sender, recipient, amount) {
-        const transferFee = calculateFee(150_000, this.gasPrice);
+    async transfer(contractAddress, sender, recipient, amount, gasLimit = 150_000) {
+        const transferFee = calculateFee(gasLimit, this.gasPrice);
         const transferMsg = {
             transfer: {
                 recipient: recipient,
@@ -224,7 +224,8 @@ async function main() {
     const contractAddress2 = await tokenClient.instantiateContract(alice.address1, inits[1]);
 
     // transfer to contractAddress2
-    await tokenClient.transfer(contractAddress1, alice.address0, contractAddress2, "1000");
+    console.info("[Transfer token to other contract]");
+    await tokenClient.transfer(contractAddress1, alice.address0, contractAddress2, "1000", 200_000);
 
     // transfer to native module (x/foundation)
     // grpcurl -plaintext -d '{"name":"foundation"}' 127.0.0.1:9090 cosmos.auth.v1beta1.Query/ModuleAccountByName
@@ -244,7 +245,7 @@ async function main() {
 
     // trasnfer token to caller contract
     console.info("[Transfer token to callerContract]");
-    await tokenClient.transfer(contractAddress1, alice.address0, callerContractAddr, "10000");
+    await tokenClient.transfer(contractAddress1, alice.address0, callerContractAddr, "10000", 200_000);
 
     // transfer by caller contract
     console.info("[Transfer token from callerContract to alice address2]");

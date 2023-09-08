@@ -17,4 +17,4 @@
 
 # scripts
 scripts/yarn-error.log
-scripts/node_modules
+**/node_modules
