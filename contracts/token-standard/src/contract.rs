@@ -159,7 +159,6 @@ mod exec {
             },
         )?;
 
-        // Ok(Response::new().add_event(transfer_event(owner.as_ref(), recipient.as_ref(), amount)))
         let mut res = Response::default().add_event(transfer_event(
             owner.as_ref(),
             recipient.as_ref(),
