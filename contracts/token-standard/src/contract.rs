@@ -111,20 +111,17 @@ mod exec {
         ));
 
         // if recipient is smart contract
-        match deps.querier.query_wasm_contract_info(recipient.clone()) {
-            Ok(_) => {
-                let sub_msg = WasmMsg::Execute {
-                    contract_addr: recipient,
-                    msg: to_binary(&ExecuteMsg::Receive {
-                        sender: env.contract.address.into(),
-                        amount,
-                    })?,
-                    funds: vec![],
-                };
-                res = res.add_submessage(SubMsg::new(sub_msg));
-                // res = res.add_submessage(SubMsg::reply_on_success(sub_msg, RECEIVE_ID))
-            }
-            _ => {}
+        if deps.querier.query_wasm_contract_info(recipient.clone()).is_ok() {
+            let sub_msg = WasmMsg::Execute {
+                contract_addr: recipient,
+                msg: to_binary(&ExecuteMsg::Receive {
+                    sender: env.contract.address.into(),
+                    amount,
+                })?,
+                funds: vec![],
+            };
+            res = res.add_submessage(SubMsg::new(sub_msg));
+            // res = res.add_submessage(SubMsg::reply_on_success(sub_msg, RECEIVE_ID))
         };
 
         Ok(res)
@@ -166,20 +163,17 @@ mod exec {
         ));
 
         // if recipient is smart contract
-        match deps.querier.query_wasm_contract_info(recipient.clone()) {
-            Ok(_) => {
-                let sub_msg = WasmMsg::Execute {
-                    contract_addr: recipient,
-                    msg: to_binary(&ExecuteMsg::Receive {
-                        sender: env.contract.address.into(),
-                        amount,
-                    })?,
-                    funds: vec![],
-                };
-                res = res.add_submessage(SubMsg::new(sub_msg));
-                // res = res.add_submessage(SubMsg::reply_on_success(sub_msg, RECEIVE_ID))
-            }
-            _ => {}
+        if deps.querier.query_wasm_contract_info(recipient.clone()).is_ok() {
+            let sub_msg = WasmMsg::Execute {
+                contract_addr: recipient,
+                msg: to_binary(&ExecuteMsg::Receive {
+                    amount,
+                    sender: env.contract.address.into(),
+                })?,
+                funds: vec![],
+            };
+            res = res.add_submessage(SubMsg::new(sub_msg));
+            // res = res.add_submessage(SubMsg::reply_on_success(sub_msg, RECEIVE_ID))
         };
 
         Ok(res)

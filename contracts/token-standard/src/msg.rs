@@ -68,7 +68,7 @@ pub enum ExecuteMsg {
         current_allowance: Uint128,
     },
     Receive {
-        sender: String, 
+        sender: String,
         amount: Uint128,
     },
 }
