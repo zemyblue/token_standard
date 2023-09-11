@@ -29,7 +29,7 @@ cw2 = "1.1.0"
 schemars = "0.8.12"
 serde = { version = "1.0.167", default-features = false, features = ["derive"] }
 thiserror = "1.0.43"
-token-standard = { path = "../token-standard"}
+token-standard = { path = "../token-standard", features = ["library"]}
 
 [patch.crates-io]
 cosmwasm-std = { git = "https://github.com/Finschia/cosmwasm", tag = "v1.1.9-0.7.0" }

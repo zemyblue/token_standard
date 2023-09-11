@@ -18,8 +18,6 @@ use crate::state::{TokenInfo, ALLOWANCES, ALLOWANCES_SPENDER, BALANCES, TOKEN_IN
 const CONTRACT_NAME: &str = "crates.io:token-standard";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-// const RECEIVE_ID: u64 = 1001;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -122,7 +120,6 @@ mod exec {
                     funds: vec![],
                 };
                 res = res.add_submessage(SubMsg::new(sub_msg));
-                // res = res.add_submessage(SubMsg::reply_on_error(sub_msg, RECEIVE_ID))
             }
             _ => {}
         };
@@ -132,7 +129,7 @@ mod exec {
 
     pub fn transfer_from(
         deps: DepsMut,
-        _env: Env,
+        env: Env,
         info: MessageInfo,
         owner: String,
         recipient: String,
@@ -158,7 +155,29 @@ mod exec {
             },
         )?;
 
-        Ok(Response::new().add_event(transfer_event(owner.as_ref(), recipient.as_ref(), amount)))
+        let mut res = Response::default().add_event(transfer_event(
+            info.sender.as_ref(),
+            recipient.as_ref(),
+            amount,
+        ));
+
+        // if recipient is smart contract
+        match deps.querier.query_wasm_contract_info(recipient.clone()) {
+            Ok(_) => {
+                let sub_msg = WasmMsg::Execute {
+                    contract_addr: recipient,
+                    msg: to_binary(&ExecuteMsg::Receive {
+                        sender: env.contract.address.into(),
+                        amount,
+                    })?,
+                    funds: vec![],
+                };
+                res = res.add_submessage(SubMsg::new(sub_msg));
+            }
+            _ => {}
+        };
+
+        Ok(res)
     }
 
     pub fn _deduct_allowance(
@@ -239,19 +258,6 @@ mod exec {
             .add_attribute("amount", amount))
     }
 }
-
-// #[cfg_attr(not(feature = "library"), entry_point)]
-// pub fn reply(_deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
-//     match reply.id {
-//         RECEIVE_ID => match reply.result {
-//             SubMsgResult::Ok(_) => Ok(Response::new().add_attribute("reply_result", "ok")),
-//             SubMsgResult::Err(err) => Ok(Response::new()
-//                 .add_attribute("reply_result", "fail")
-//                 .add_attribute("error", err))
-//         },
-//         _ => Err(ContractError::UnknownReplyId { id: reply.id })
-//     }
-// }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
