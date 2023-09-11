@@ -111,7 +111,11 @@ mod exec {
         ));
 
         // if recipient is smart contract
-        if deps.querier.query_wasm_contract_info(recipient.clone()).is_ok() {
+        if deps
+            .querier
+            .query_wasm_contract_info(recipient.clone())
+            .is_ok()
+        {
             let sub_msg = WasmMsg::Execute {
                 contract_addr: recipient,
                 msg: to_binary(&ExecuteMsg::Receive {
@@ -163,7 +167,11 @@ mod exec {
         ));
 
         // if recipient is smart contract
-        if deps.querier.query_wasm_contract_info(recipient.clone()).is_ok() {
+        if deps
+            .querier
+            .query_wasm_contract_info(recipient.clone())
+            .is_ok()
+        {
             let sub_msg = WasmMsg::Execute {
                 contract_addr: recipient,
                 msg: to_binary(&ExecuteMsg::Receive {
