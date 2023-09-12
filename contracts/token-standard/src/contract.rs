@@ -254,9 +254,9 @@ mod exec {
     }
 }
 
-fn is_contract(deps: Deps<'_>, recipient: &String) -> bool {
+fn is_contract(deps: Deps<'_>, recipient: &str) -> bool {
     deps.querier
-        .query_wasm_contract_info(recipient.clone())
+        .query_wasm_contract_info(recipient.to_owned())
         .is_ok()
 }
 
