@@ -23,6 +23,10 @@ pub enum ExecuteMsg {
         amount: Uint128,
         current_allowance: Uint128,
     },
+    Receive {
+        sender: String,
+        amount: Uint128,
+    },
 }
 
 #[cw_serde]

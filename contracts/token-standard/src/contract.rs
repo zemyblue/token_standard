@@ -18,8 +18,6 @@ use crate::state::{TokenInfo, ALLOWANCES, ALLOWANCES_SPENDER, BALANCES, TOKEN_IN
 const CONTRACT_NAME: &str = "crates.io:token-standard";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-// const RECEIVE_ID: u64 = 1001;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -111,20 +109,16 @@ mod exec {
         ));
 
         // if recipient is smart contract
-        match deps.querier.query_wasm_contract_info(recipient.clone()) {
-            Ok(_) => {
-                let sub_msg = WasmMsg::Execute {
-                    contract_addr: recipient,
-                    msg: to_binary(&ExecuteMsg::Receive {
-                        sender: env.contract.address.into(),
-                        amount,
-                    })?,
-                    funds: vec![],
-                };
-                res = res.add_submessage(SubMsg::new(sub_msg));
-                // res = res.add_submessage(SubMsg::reply_on_error(sub_msg, RECEIVE_ID))
-            }
-            _ => {}
+        if is_contract(deps.as_ref(), &recipient) {
+            let sub_msg = WasmMsg::Execute {
+                contract_addr: recipient,
+                msg: to_binary(&ExecuteMsg::Receive {
+                    sender: env.contract.address.into(),
+                    amount,
+                })?,
+                funds: vec![],
+            };
+            res = res.add_submessage(SubMsg::new(sub_msg));
         };
 
         Ok(res)
@@ -132,7 +126,7 @@ mod exec {
 
     pub fn transfer_from(
         deps: DepsMut,
-        _env: Env,
+        env: Env,
         info: MessageInfo,
         owner: String,
         recipient: String,
@@ -158,7 +152,26 @@ mod exec {
             },
         )?;
 
-        Ok(Response::new().add_event(transfer_event(owner.as_ref(), recipient.as_ref(), amount)))
+        let mut res = Response::default().add_event(transfer_event(
+            owner.as_ref(),
+            recipient.as_ref(),
+            amount,
+        ));
+
+        // if recipient is smart contract
+        if is_contract(deps.as_ref(), &recipient) {
+            let sub_msg = WasmMsg::Execute {
+                contract_addr: recipient,
+                msg: to_binary(&ExecuteMsg::Receive {
+                    amount,
+                    sender: env.contract.address.into(),
+                })?,
+                funds: vec![],
+            };
+            res = res.add_submessage(SubMsg::new(sub_msg));
+        };
+
+        Ok(res)
     }
 
     pub fn _deduct_allowance(
@@ -223,35 +236,29 @@ mod exec {
     }
 
     pub fn receive(
-        _deps: DepsMut,
+        deps: DepsMut,
         _env: Env,
         info: MessageInfo,
         sender: String,
-        amount: Uint128,
+        _amount: Uint128,
     ) -> Result<Response, ContractError> {
-        if info.sender != sender {
+        // check sender is real sender and contract.
+        if info.sender != sender || !is_contract(deps.as_ref(), &sender) {
             return Err(ContractError::Unauthorized {});
         }
 
-        Ok(Response::default()
-            .add_attribute("action", "Received")
-            .add_attribute("sender", sender)
-            .add_attribute("amount", amount))
+        // add triggered features here
+        // if you don't want to receive token with any reason, please return error.
+
+        Ok(Response::default())
     }
 }
 
-// #[cfg_attr(not(feature = "library"), entry_point)]
-// pub fn reply(_deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
-//     match reply.id {
-//         RECEIVE_ID => match reply.result {
-//             SubMsgResult::Ok(_) => Ok(Response::new().add_attribute("reply_result", "ok")),
-//             SubMsgResult::Err(err) => Ok(Response::new()
-//                 .add_attribute("reply_result", "fail")
-//                 .add_attribute("error", err))
-//         },
-//         _ => Err(ContractError::UnknownReplyId { id: reply.id })
-//     }
-// }
+fn is_contract(deps: Deps<'_>, recipient: &str) -> bool {
+    deps.querier
+        .query_wasm_contract_info(recipient.to_owned())
+        .is_ok()
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {

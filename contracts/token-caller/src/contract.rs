@@ -56,6 +56,7 @@ pub fn execute(
             amount,
             current_allowance,
         ),
+        ExecuteMsg::Receive { sender, amount } => exec::receive(deps, env, info, sender, amount),
     }
 }
 
@@ -137,6 +138,30 @@ mod exec {
 
         Ok(Response::new().add_submessage(SubMsg::new(sub_msg)))
     }
+
+    pub fn receive(
+        deps: DepsMut,
+        _env: Env,
+        info: MessageInfo,
+        sender: String,
+        _amount: Uint128,
+    ) -> Result<Response, ContractError> {
+        // check sender is real sender and contract.
+        if info.sender != sender || !is_contract(deps.as_ref(), &sender) {
+            return Err(ContractError::Unauthorized {});
+        }
+
+        // add triggered features here
+        // if you don't want to receive token with any reason, please return error.
+
+        Ok(Response::default())
+    }
+}
+
+fn is_contract(deps: Deps<'_>, recipient: &str) -> bool {
+    deps.querier
+        .query_wasm_contract_info(recipient.to_owned())
+        .is_ok()
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

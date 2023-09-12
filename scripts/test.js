@@ -6,6 +6,7 @@ const { SigningFinschiaClient, makeLinkPath } = require("@finschia/finschia");
 const { DirectSecp256k1HdWallet } = require("@cosmjs/proto-signing");
 const { calculateFee, GasPrice } = require("@cosmjs/stargate");
 const fs = require("fs");
+const { assert } = require("console");
 
 const endpoint = "http://localhost:26657";
 const alice = {
@@ -73,10 +74,16 @@ class TokenClient {
                 amount: amount,
             },
         };
-        const tranRes = await this.client.execute(sender, contractAddress, transferMsg, transferFee);
-        console.info(`Transfer txHash: ${tranRes.transactionHash}, events: ${JSON.stringify(tranRes.events)}`);
+        
+        try {
+            const tranRes = await this.client.execute(sender, contractAddress, transferMsg, transferFee);
+            console.info(`Transfer txHash: ${tranRes.transactionHash}, events: ${JSON.stringify(tranRes.events)}`);
 
-        return tranRes.transactionHash;
+            return tranRes.transactionHash;    
+        } catch (error) {
+            console.info(`Transfer err: ${error}`);
+            return error;
+        }
     }
 
     async approve(contractAddress, sender, spender, amount, current_allowance) {
@@ -107,6 +114,12 @@ class TokenClient {
         console.info(`TransferFrom txHash: ${tran2Res.transactionHash}, events: ${JSON.stringify(tran2Res.events)}`);
 
         return tran2Res.transactionHash;
+    }
+
+    async balance(contractAddress, owner) {
+        const query = {balance: { owner: owner }};
+        const res = await this.client.queryContractSmart(contractAddress, query);
+        return res.balance;
     }
 }
 
@@ -145,10 +158,15 @@ class CallerClient {
                 amount: amount,
             },
         }
-        const res = await this.client.execute(sender, contractAddress, msg, fee);
-        console.info(`Transfer(caller) txHash: ${res.transactionHash}, events: ${JSON.stringify(res.events)}`);
+        try {
+            const res = await this.client.execute(sender, contractAddress, msg, fee);
+            console.info(`Transfer(caller) txHash: ${res.transactionHash}, events: ${JSON.stringify(res.events)}`);
 
-        return res.transactionHash;
+            return res.transactionHash;
+        } catch (error) {
+            console.info(`Transfer(caller) err: ${error}`);
+            return error;
+        }
     }
 
     async transferFrom(contractAddress, sender, contract, owner, recipient, amount) {
@@ -161,10 +179,17 @@ class CallerClient {
                 amount: amount,
             },
         };
-        const res = await this.client.execute(sender, contractAddress, msg, fee);
-        console.info(`TransferFrom(caller) txHash: ${res.transactionHash}, events: ${JSON.stringify(res.events)}`);
+        
+        try {
+            const res = await this.client.execute(sender, contractAddress, msg, fee);
+            console.info(`TransferFrom(caller) txHash: ${res.transactionHash}, events: ${JSON.stringify(res.events)}`);
 
-        return res.transactionHash;
+            return res.transactionHash;
+        } catch (error) {
+            console.info(`TransferFrom(caller) err: ${error}`);
+            return error;
+        }
+        
     }
 
     async approve(contractAddress, sender, contract, spender, amount, current_allowance) {
@@ -177,10 +202,17 @@ class CallerClient {
                 current_allowance: current_allowance,
             },
         };
-        const res = await this.client.execute(sender, contractAddress, approveMsg, approveFee);
-        console.info(`Approve(caller) txHash: ${res.transactionHash}, events:${JSON.stringify(res.events)}`);
 
-        return res.transactionHash;
+        try {
+            const res = await this.client.execute(sender, contractAddress, approveMsg, approveFee);
+            console.info(`Approve(caller) txHash: ${res.transactionHash}, events:${JSON.stringify(res.events)}`);
+
+            return res.transactionHash;
+        } catch (error) {
+            console.info(`Approve(caller) err: ${error}`);
+            return error;
+        }
+        
     }
 }
 
@@ -246,6 +278,8 @@ async function main() {
     // trasnfer token to caller contract
     console.info("[Transfer token to callerContract]");
     await tokenClient.transfer(contractAddress1, alice.address0, callerContractAddr, "10000", 200_000);
+    const bal = await tokenClient.balance(contractAddress1, callerContractAddr);
+    assert(bal == 0);
 
     // transfer by caller contract
     console.info("[Transfer token from callerContract to alice address2]");
