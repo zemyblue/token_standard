@@ -257,41 +257,41 @@ async function main() {
 
     // transfer to contractAddress2
     console.info("[Transfer token to other contract]");
-    await tokenClient.transfer(contractAddress1, alice.address0, contractAddress2, "1000", 200_000);
+    await tokenClient.transfer(contractAddress1, alice.address0, contractAddress2, "1000", 250_000);
 
     // transfer to native module (x/foundation)
     // grpcurl -plaintext -d '{"name":"foundation"}' 127.0.0.1:9090 cosmos.auth.v1beta1.Query/ModuleAccountByName
     // address: link190vt0vxc8c8vj24a7mm3fjsenfu8f5yxxj76cp
-    const foundationAddress = "link190vt0vxc8c8vj24a7mm3fjsenfu8f5yxxj76cp";
-    await tokenClient.transfer(contractAddress1, alice.address0, foundationAddress, "10000");
+    // const foundationAddress = "link190vt0vxc8c8vj24a7mm3fjsenfu8f5yxxj76cp";
+    // await tokenClient.transfer(contractAddress1, alice.address0, foundationAddress, "10000");
 
-    /////////////////////////////////////////
-    // deploy caller contract
-    const callerWasm = fs.readFileSync(__dirname + "/../artifacts/token_caller.wasm");
-    const callerCodeId = await deployContract(client, alice.address1, callerWasm);
+    // /////////////////////////////////////////
+    // // deploy caller contract
+    // const callerWasm = fs.readFileSync(__dirname + "/../artifacts/token_caller.wasm");
+    // const callerCodeId = await deployContract(client, alice.address1, callerWasm);
 
-    const callerClient = new CallerClient(client, callerCodeId);
+    // const callerClient = new CallerClient(client, callerCodeId);
 
-    // instantiate
-    const callerContractAddr = await callerClient.instantiateContract(alice.address1);
+    // // instantiate
+    // const callerContractAddr = await callerClient.instantiateContract(alice.address1);
 
-    // trasnfer token to caller contract
-    console.info("[Transfer token to callerContract]");
-    await tokenClient.transfer(contractAddress1, alice.address0, callerContractAddr, "10000", 200_000);
-    const bal = await tokenClient.balance(contractAddress1, callerContractAddr);
-    assert(bal == 0);
+    // // trasnfer token to caller contract
+    // console.info("[Transfer token to callerContract]");
+    // await tokenClient.transfer(contractAddress1, alice.address0, callerContractAddr, "10000", 200_000);
+    // const bal = await tokenClient.balance(contractAddress1, callerContractAddr);
+    // assert(bal == 0);
 
-    // transfer by caller contract
-    console.info("[Transfer token from callerContract to alice address2]");
-    await callerClient.transfer(callerContractAddr, alice.address1, contractAddress1, alice.address2, "5000");
+    // // transfer by caller contract
+    // console.info("[Transfer token from callerContract to alice address2]");
+    // await callerClient.transfer(callerContractAddr, alice.address1, contractAddress1, alice.address2, "5000");
 
-    // approve by caller contract
-    const callerContractAddr2 = await callerClient.instantiateContract(alice.address2);
-    console.info("[Approve token of caller]");
-    await callerClient.approve(callerContractAddr, alice.address1, contractAddress1, callerContractAddr2, "5000", "0");
+    // // approve by caller contract
+    // const callerContractAddr2 = await callerClient.instantiateContract(alice.address2);
+    // console.info("[Approve token of caller]");
+    // await callerClient.approve(callerContractAddr, alice.address1, contractAddress1, callerContractAddr2, "5000", "0");
 
-    console.info("[TransferFrom by caller]");
-    await callerClient.transferFrom(callerContractAddr2, alice.address2, contractAddress1, callerContractAddr, alice.address3, "2000");
+    // console.info("[TransferFrom by caller]");
+    // await callerClient.transferFrom(callerContractAddr2, alice.address2, contractAddress1, callerContractAddr, alice.address3, "2000");
 }
 
 

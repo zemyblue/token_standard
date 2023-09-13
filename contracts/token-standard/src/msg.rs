@@ -84,6 +84,12 @@ pub enum QueryMsg {
     Balance { owner: String },
     #[returns(AllowanceResponse)]
     Allowance { owner: String, spender: String },
+    #[returns(OnFTReceivedResponse)]
+    OnFTReceived {
+        sender: String,
+        owner: String,
+        amount: Uint128,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
@@ -109,4 +115,10 @@ pub struct BalanceResponse {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
 pub struct AllowanceResponse {
     pub allowance: Uint128,
+}
+
+#[cw_serde]
+pub struct OnFTReceivedResponse {
+    // true if this contract can receive ft
+    pub enable: bool,
 }

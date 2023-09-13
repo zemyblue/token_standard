@@ -9,8 +9,8 @@ use cw2::set_contract_version;
 use crate::error::ContractError;
 use crate::event::{approval_event, transfer_event};
 use crate::msg::{
-    AllowanceResponse, BalanceResponse, ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg,
-    TotalSupplyResponse,
+    AllowanceResponse, BalanceResponse, ExecuteMsg, InfoResponse, InstantiateMsg,
+    OnFTReceivedResponse, QueryMsg, TotalSupplyResponse,
 };
 use crate::state::{TokenInfo, ALLOWANCES, ALLOWANCES_SPENDER, BALANCES, TOKEN_INFO};
 
@@ -110,6 +110,16 @@ mod exec {
 
         // if recipient is smart contract
         if is_contract(deps.as_ref(), &recipient) {
+            // check if define onReceived
+            let ress: OnFTReceivedResponse = deps.querier.query_wasm_smart(
+                &recipient,
+                &QueryMsg::OnFTReceived {
+                    sender: env.contract.address.clone().into(),
+                    owner: info.sender.to_string(),
+                    amount,
+                },
+            )?;
+
             let sub_msg = WasmMsg::Execute {
                 contract_addr: recipient,
                 msg: to_binary(&ExecuteMsg::Receive {
@@ -118,7 +128,9 @@ mod exec {
                 })?,
                 funds: vec![],
             };
-            res = res.add_submessage(SubMsg::new(sub_msg));
+            res = res
+                .add_submessage(SubMsg::new(sub_msg))
+                .add_attribute("on_ft_received", ress.enable.to_string());
         };
 
         Ok(res)
@@ -269,6 +281,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Allowance { owner, spender } => {
             to_binary(&query_allowance(deps, owner, spender)?)
         }
+        QueryMsg::OnFTReceived {
+            sender,
+            owner,
+            amount,
+        } => to_binary(&query_on_ft_received(deps, sender, owner, amount)?),
     }
 }
 
@@ -304,6 +321,20 @@ pub fn query_allowance(deps: Deps, owner: String, spender: String) -> StdResult<
         .may_load(deps.storage, (&owner_addr, &spender_addr))?
         .unwrap_or_default();
     Ok(allowance)
+}
+
+// OnFTReceived
+pub fn query_on_ft_received(
+    _deps: Deps,
+    _sender: String,
+    _owner: String,
+    amount: Uint128,
+) -> StdResult<OnFTReceivedResponse> {
+    if amount == Uint128::zero() {
+        return Ok(OnFTReceivedResponse { enable: false });
+    }
+
+    Ok(OnFTReceivedResponse { enable: true })
 }
 
 #[cfg(test)]
