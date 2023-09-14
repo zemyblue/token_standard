@@ -21,6 +21,6 @@ pub enum ContractError {
     #[error("No allowance for this account")]
     NoAllowance {},
 
-    #[error("Got a submessage reply with unknown id: {id}")]
-    UnknownReplyId { id: u64 },
+    #[error("Recipient non-transferable")]
+    NonTransferable {},
 }

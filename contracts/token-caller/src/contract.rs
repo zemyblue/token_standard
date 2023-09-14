@@ -1,10 +1,10 @@
-use cosmwasm_std::{entry_point, Binary, Deps, StdResult};
+use cosmwasm_std::{entry_point, to_binary, Binary, Deps, StdResult, Uint128};
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 use cw2::set_contract_version;
 
 #[cfg(not(feature = "library"))]
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, OnFTReceivedResponse, QueryMsg};
 use token_standard::ExecuteMsg as TokenExecuteMsg;
 
 // version info for migration info
@@ -61,7 +61,7 @@ pub fn execute(
 }
 
 mod exec {
-    use cosmwasm_std::{to_binary, SubMsg, Uint128, WasmMsg};
+    use cosmwasm_std::{to_binary, SubMsg, WasmMsg};
 
     use super::*;
 
@@ -165,8 +165,28 @@ fn is_contract(deps: Deps<'_>, recipient: &str) -> bool {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {}
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::OnFTReceived {
+            sender,
+            owner,
+            amount,
+        } => to_binary(&query_on_ft_received(deps, sender, owner, amount)?),
+    }
+}
+
+// OnFTReceived
+pub fn query_on_ft_received(
+    _deps: Deps,
+    _sender: String,
+    _owner: String,
+    amount: Uint128,
+) -> StdResult<OnFTReceivedResponse> {
+    if amount == Uint128::zero() {
+        return Ok(OnFTReceivedResponse { enable: false });
+    }
+
+    Ok(OnFTReceivedResponse { enable: true })
 }
 
 #[cfg(test)]

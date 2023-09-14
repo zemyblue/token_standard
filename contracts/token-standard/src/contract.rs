@@ -111,14 +111,10 @@ mod exec {
         // if recipient is smart contract
         if is_contract(deps.as_ref(), &recipient) {
             // check if define onReceived
-            let ress: OnFTReceivedResponse = deps.querier.query_wasm_smart(
-                &recipient,
-                &QueryMsg::OnFTReceived {
-                    sender: env.contract.address.clone().into(),
-                    owner: info.sender.to_string(),
-                    amount,
-                },
-            )?;
+            let rr = can_receive(deps, &recipient, &env, info, amount)?;
+            if !rr.enable {
+                return Err(ContractError::NonTransferable {});
+            }
 
             let sub_msg = WasmMsg::Execute {
                 contract_addr: recipient,
@@ -130,10 +126,28 @@ mod exec {
             };
             res = res
                 .add_submessage(SubMsg::new(sub_msg))
-                .add_attribute("on_ft_received", ress.enable.to_string());
+                .add_attribute("on_ft_received", rr.enable.to_string());
         };
 
         Ok(res)
+    }
+
+    fn can_receive(
+        deps: DepsMut<'_>,
+        recipient: &String,
+        env: &Env,
+        info: MessageInfo,
+        amount: Uint128,
+    ) -> Result<OnFTReceivedResponse, ContractError> {
+        let ress: OnFTReceivedResponse = deps.querier.query_wasm_smart(
+            recipient,
+            &QueryMsg::OnFTReceived {
+                sender: env.contract.address.clone().into(),
+                owner: info.sender.to_string(),
+                amount,
+            },
+        )?;
+        Ok(ress)
     }
 
     pub fn transfer_from(
@@ -172,6 +186,11 @@ mod exec {
 
         // if recipient is smart contract
         if is_contract(deps.as_ref(), &recipient) {
+            let rr = can_receive(deps, &recipient, &env, info, amount)?;
+            if !rr.enable {
+                return Err(ContractError::NonTransferable {});
+            }
+
             let sub_msg = WasmMsg::Execute {
                 contract_addr: recipient,
                 msg: to_binary(&ExecuteMsg::Receive {
