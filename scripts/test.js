@@ -257,7 +257,7 @@ async function main() {
 
     // transfer to contractAddress2
     console.info("[Transfer token to other contract]");
-    await tokenClient.transfer(contractAddress1, alice.address0, contractAddress2, "1000", 200_000);
+    await tokenClient.transfer(contractAddress1, alice.address0, contractAddress2, "1000", 250_000);
 
     // transfer to native module (x/foundation)
     // grpcurl -plaintext -d '{"name":"foundation"}' 127.0.0.1:9090 cosmos.auth.v1beta1.Query/ModuleAccountByName
@@ -277,7 +277,7 @@ async function main() {
 
     // trasnfer token to caller contract
     console.info("[Transfer token to callerContract]");
-    await tokenClient.transfer(contractAddress1, alice.address0, callerContractAddr, "10000", 200_000);
+    await tokenClient.transfer(contractAddress1, alice.address0, callerContractAddr, "10000", 250_000);
     const bal = await tokenClient.balance(contractAddress1, callerContractAddr);
     assert(bal == 0);
 

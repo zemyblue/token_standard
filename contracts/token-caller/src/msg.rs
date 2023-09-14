@@ -31,4 +31,17 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    #[returns(OnFTReceivedResponse)]
+    OnFTReceived {
+        sender: String,
+        owner: String,
+        amount: Uint128,
+    },
+}
+
+#[cw_serde]
+pub struct OnFTReceivedResponse {
+    // true if this contract can receive ft
+    pub enable: bool,
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OnFTReceivedResponse",
+  "type": "object",
+  "required": [
+    "enable"
+  ],
+  "properties": {
+    "enable": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
